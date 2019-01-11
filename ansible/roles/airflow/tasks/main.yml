@@ -1,0 +1,8 @@
+- name: sync dags
+  become: yes
+  copy:
+    src: dags
+    dest: /usr/local/airflow
+    owner: root
+    group: root
+    mode: 0644

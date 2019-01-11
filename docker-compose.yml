@@ -1,0 +1,145 @@
+# docker-airflow for Amazon ECS CLI
+# original (not for ECS CLI): https://github.com/puckel/docker-airflow/docker-compose-CeleryExecutor.yml
+
+version: '3'
+services:
+    redis:
+        image: 'redis:3.2.7'
+        # command: redis-server --requirepass redispass
+        logging:
+            driver: awslogs
+            options: 
+                awslogs-group: tutorial-redis
+                awslogs-region: ap-northeast-1
+                awslogs-stream-prefix: redis
+
+    postgres:
+        image: postgres:9.6
+        environment:
+            - POSTGRES_USER=airflow
+            - POSTGRES_PASSWORD=airflow
+            - POSTGRES_DB=airflow
+        # Uncomment these lines to persist data on the local filesystem.
+        #     - PGDATA=/var/lib/postgresql/data/pgdata
+        # volumes:
+        #     - ./pgdata:/var/lib/postgresql/data/pgdata
+        logging:
+            driver: awslogs
+            options: 
+                awslogs-group: tutorial-postgres
+                awslogs-region: ap-northeast-1
+                awslogs-stream-prefix: postgres
+
+    webserver:
+        image: puckel/docker-airflow:1.10.1
+        #restart: always
+        links:
+            - postgres
+            - redis
+        environment:
+            - LOAD_EX=n
+            - FERNET_KEY=46BKJoQYlPPOexq0OhDZnIlNepKFf87WFwLbfzqDDho=
+            - EXECUTOR=Celery
+            - REDIS_PORT=6379
+            - POSTGRES_PORT=5432
+            # - POSTGRES_USER=airflow
+            # - POSTGRES_PASSWORD=airflow
+            # - POSTGRES_DB=airflow
+            # - REDIS_PASSWORD=redispass
+        volumes:
+            - /usr/local/airflow/dags:/usr/local/airflow/dags
+            # Uncomment to include custom plugins
+            # - ./plugins:/usr/local/airflow/plugins
+        ports:
+            - "80:8080"
+        command: webserver
+        healthcheck:
+            test: ["CMD-SHELL", "[ -f /usr/local/airflow/airflow-webserver.pid ]"]
+            interval: 30s
+            timeout: 30s
+            retries: 3
+        logging:
+            driver: awslogs
+            options: 
+                awslogs-group: tutorial-webserver
+                awslogs-region: ap-northeast-1
+                awslogs-stream-prefix: webserver
+
+    flower:
+        image: puckel/docker-airflow:1.10.1
+        #restart: always
+        links:
+            - redis
+            - postgres
+        environment:
+            - EXECUTOR=Celery
+            - REDIS_PORT=6379
+            - POSTGRES_PORT=5432
+            # - REDIS_PASSWORD=redispass
+        ports:
+            - "5555:5555"
+        command: flower
+        logging:
+            driver: awslogs
+            options: 
+                awslogs-group: tutorial-flower
+                awslogs-region: ap-northeast-1
+                awslogs-stream-prefix: flower
+
+    scheduler:
+        image: puckel/docker-airflow:1.10.1
+        #restart: always
+        links:
+            - webserver
+            - redis
+            - postgres
+        volumes:
+            - /usr/local/airflow/dags:/usr/local/airflow/dags
+            # Uncomment to include custom plugins
+            # - ./plugins:/usr/local/airflow/plugins
+        environment:
+            - LOAD_EX=n
+            - FERNET_KEY=46BKJoQYlPPOexq0OhDZnIlNepKFf87WFwLbfzqDDho=
+            - EXECUTOR=Celery
+            - REDIS_PORT=6379
+            - POSTGRES_PORT=5432
+            # - POSTGRES_USER=airflow
+            # - POSTGRES_PASSWORD=airflow
+            # - POSTGRES_DB=airflow
+            # - REDIS_PASSWORD=redispass
+        command: scheduler
+        logging:
+            driver: awslogs
+            options: 
+                awslogs-group: tutorial-scheduler
+                awslogs-region: ap-northeast-1
+                awslogs-stream-prefix: scheduler
+
+    worker:
+        image: puckel/docker-airflow:1.10.1
+        #restart: always
+        links:
+            - scheduler
+            - webserver
+            - redis
+            - postgres
+        volumes:
+            - /usr/local/airflow/dags:/usr/local/airflow/dags
+            # Uncomment to include custom plugins
+            # - ./plugins:/usr/local/airflow/plugins
+        environment:
+            - FERNET_KEY=46BKJoQYlPPOexq0OhDZnIlNepKFf87WFwLbfzqDDho=
+            - EXECUTOR=Celery
+            - REDIS_PORT=6379
+            - POSTGRES_PORT=5432
+            # - POSTGRES_USER=airflow
+            # - POSTGRES_PASSWORD=airflow
+            # - POSTGRES_DB=airflow
+            # - REDIS_PASSWORD=redispass
+        command: worker
+        logging:
+            driver: awslogs
+            options: 
+                awslogs-group: tutorial-worker
+                awslogs-region: ap-northeast-1
+                awslogs-stream-prefix: worker

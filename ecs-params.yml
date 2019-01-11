@@ -1,0 +1,21 @@
+version: 1
+task_definition:
+  services:
+    redis:
+      cpu_shares: 1
+      mem_limit: 2147483648
+    postgres:
+      cpu_shares: 1
+      mem_limit: 2147483648
+    webserver:
+      cpu_shares: 1
+      mem_limit: 2147483648
+    flower:
+      cpu_shares: 1
+      mem_limit: 2147483648
+    scheduler:
+      cpu_shares: 1
+      mem_limit: 2147483648
+    worker:
+      cpu_shares: 1
+      mem_limit: 2147483648
